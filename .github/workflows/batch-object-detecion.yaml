@@ -1,45 +1,30 @@
-name: Batch Object Detection
+
+name: Jupyter RTX 6000
 
 on:
   workflow_dispatch:
-    inputs:
-      tenancy:
-        type: choice
-        required: false
-        description: 'The tenancy of the machine'
-        default: 'spot'
-        options:
-          - 'spot'
-          - 'on_demand'
 
 jobs:
-  detect_objects:
-    name: Detect Objects
-    runs-on:
-      - machine
-      - gpu=T4
-      - cpu=4
-      - ram=16
-      - architecture=x64
-      - tenancy=${{ inputs.tenancy }}
-    steps:
+  notebook:
+    runs-on: machine/gpu=RTX6000
+    timeout-minutes: 30
 
+    steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install Dependencies
+      - name: Install Jupyter
         run: |
-          pip install -r requirements.txt
+          python3 -m pip install jupyterlab
+          python3 -m pip install torch torchvision
 
-      - name: Run Object Detection
-        run: python3 object_detection.py
+      - name: Check GPU
+        run: |
+          nvidia-smi
+          python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
 
-      - name: Upload Detection Results CSV
-        uses: actions/upload-artifact@v4
-        with:
-          name: detection-results-csv
-          path: detection_output/detections.csv
+      - name: Start Notebook
+        run: |
+          jupyter nbconvert \
+            --to notebook \
+            --execute notebook.ipynb \
+            --output result.ipynb
